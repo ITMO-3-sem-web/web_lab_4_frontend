@@ -6,6 +6,7 @@ import {
     SET_FORM_DATA,
     SEND_FORM_DATA
 } from "./types";
+import {act} from "@testing-library/react";
 
 
 const initialState = {
@@ -18,26 +19,7 @@ const initialState = {
 }
 
 const testState = {
-    points: [
-        {
-            x: 1,
-            y: 2,
-            r: 3,
-            ans: 'yes'
-        },
-        {
-            x: 3,
-            y: 4,
-            r: 2,
-            ans: 'no'
-        },
-        {
-            x: -3,
-            y: -1,
-            r: 3,
-            ans: 'yes'
-        },
-    ],
+    points: [],
     formData: {
         x: null,
         y: null,
@@ -46,6 +28,7 @@ const testState = {
 }
 // todo Replace 'testState' with 'initialState'
 export default function mainPageReducer( state = testState, action ) {
+    console.log('action = ', action)
     switch ( action.type ) {
         case ADD_POINT_TO_POINTS_TABLE:
             return {...state, points: state.points.concat([action.payload])}
@@ -58,6 +41,7 @@ export default function mainPageReducer( state = testState, action ) {
         case SEND_FORM_DATA: // mb вообще убрать этот метод
             return {...state, formData: action.payload }
         case CLEAR_FORM:
+            console.log('--- clear form inside reDucer')
             return {...state, formData: {x: null, y: null, r: null}}
         default:
             return state

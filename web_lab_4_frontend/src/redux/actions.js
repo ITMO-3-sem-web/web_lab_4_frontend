@@ -6,10 +6,19 @@ import {
     FETCH_POINTS_TABLE,
     SEND_FORM_DATA,
     CLEAR_FORM,
-    SET_FORM_DATA
+    SET_FORM_DATA,
+    LOG_OUT,
+    SIGN_IN
 } from './types'
 
-import { SERVER_URL } from '../config'
+import {
+    SERVER_MAIN_PAGE_ADD_POINT_URL,
+    SERVER_MAIN_PAGE_CLEAR_URL,
+    SERVER_MAIN_PAGE_URL,
+    SERVER_START_PAGE_URL
+} from '../config'
+import { FORBIDDEN } from "../util/responseStatuses";
+import axios from 'axios'
 
 
 export function showAlert( alertText, timeLimitMS = 0 ) { // Можно сделать асинхронной, скрывающей Alert через 3 секунды
@@ -47,84 +56,58 @@ export function addPointToPointsTable( point ) {
 }
 
 export function clearPointsTable() {
-    return {
-        type: CLEAR_POINTS_TABLE
-    }
+
+
+        axios.get(SERVER_MAIN_PAGE_CLEAR_URL)
+        console.log('clears table')
+        return {
+            type: CLEAR_POINTS_TABLE
+        }
+
 }
 
 export function fetchPointsTable() {
     console.log('--- fetchPointsTable func execs')
-    return async ( dispatch ) => {
-        try {
-            const response = await fetch(SERVER_URL) // - отправляем запрос серверу на получение существующих точек
-            const json = await response.json()
 
-            let loadingErrorOccured = false
-            let points = []
-            let point
+    return (dispatch) => {
 
+        axios.get(SERVER_MAIN_PAGE_URL).then(
+            r => {
+                window.points = r.data
+                console.log(')()()()()()', r)
+                dispatch({type: FETCH_POINTS_TABLE, payload: r.data})
+            } )
 
-            json.forEach( (pointIt) => {
-                try {
-                    point = {
-                        x: pointIt.x,
-                        y: pointIt.y,
-                        r: pointIt.r
-                    }
-
-                    points.concat([point])
-                } catch (e) {
-                    loadingErrorOccured = true;
-                    console.log('Нарушена структура объекта точки: ' , pointIt)
-                }
-            })
-
-            dispatch({type: FETCH_POINTS_TABLE, payload: points})
-
-            if ( loadingErrorOccured ) {
-                dispatch(showAlert('При загрузке с сервера некоторые данные были повреждены.'))
-            }
-
-        } catch (e) {
-            dispatch(showAlert('При загрузке данных с сервера произошла ошибка.'))
-        }
     }
+
 }
 
-
+// Accepts object {x:'', y:'', r:''}
 export function sendFormData( formData ) {
-    console.log('--- sendFormData func execs')
-    return async ( dispatch ) => {
-        try {
-            // todo Добавить данные точки для отправки НА сервер
-            const response = await fetch(SERVER_URL) // - отправляем запрос серверу на получение существующих точек
-            const json = await response.json()
-            if (json.type === 'SUCCESS') {
-                try {
-                    const point = {
-                        x: json.x,
-                        y: json.y,
-                        r: json.y
-                    }
-
-                    dispatch(addPointToPointsTable(point))
-
-                } catch (e) {
-                    dispatch(showAlert('С сервера получены неверные данные'))
-                }
-            } else if (json.type === 'ERROR') {
-                dispatch(showAlert('Вы отправили неправильные данные на сервер'))
-            } else {
-                dispatch(showAlert('С сервера получены неверные данные'))
-            }
-
-        } catch (e) {
-            dispatch(showAlert('При загрузке данных с сервера произошла ошибка.'))
-        }
+    let request
+    try {
+        request = '?x=' + formData.x + '&' +
+            'y=' + formData.y + '&' +
+            'r=' + formData.r
+    } catch (e) {
+        alert('invalid formData in "sendFormData"' + formData.json())
+        return
     }
+
+    return async ( dispatch ) => {
+        axios.get(SERVER_MAIN_PAGE_ADD_POINT_URL  + request).then(
+            r => {
+                window.points = r.data
+                console.log(')()()()()()', r)
+
+                dispatch(fetchPointsTable()) // todo error can be here
+            })
+    }
+
 }
 
 export function setFormData( formData ) {
+    console.log('--- setFormData')
     return {
         type: SET_FORM_DATA,
         payload: formData
@@ -133,9 +116,22 @@ export function setFormData( formData ) {
 
 // Скорее всего не нужна
 export function clearForm() {
-    setFormData({
+    console.log('--- clearForm')
+    return setFormData({
         x: null,
         y: null,
         r: null
     })
+}
+
+export function signInUser() {
+    return {
+        type: SIGN_IN
+    }
+}
+
+export function logOutUser() {
+    return {
+        type: LOG_OUT
+    }
 }

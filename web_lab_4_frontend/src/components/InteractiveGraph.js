@@ -3,10 +3,17 @@ import { connect } from 'react-redux'
 import {
     setFormData,
     sendFormData,
-    showAlert
+    showAlert, clearForm
 } from '../redux/actions'
 
-import isNumeric from '../util/isNumeric'
+import {
+    isValidX,
+    isValidY,
+    isValidR,
+    isValidFormData,
+    findClosestX,
+    findClosestY
+} from '../util/validators'
 
 import {
     rayLength,
@@ -21,7 +28,6 @@ import {
     pixelStep
 } from './InteractiveGraph__Config'
 
-import Alert from "./Alert";
 
 
 class InteractiveGraph extends Component {
@@ -35,6 +41,16 @@ class InteractiveGraph extends Component {
     xViewElem
     yViewElem
 
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        if (prevProps.formData.r !== this.props.formData.r) {
+            // Do whatever you want
+            this.drawAll(this.props.formData.r)
+
+        } else if ( prevProps.points !== this.points ) {
+
+            this.drawAll(this.props.formData.r)
+        }
+    }
 
     componentDidMount() {
 
@@ -42,35 +58,21 @@ class InteractiveGraph extends Component {
         this.y = this.props.formData.y
         this.r = this.props.formData.r
 
-        this.points = this.props.points
-
-        // setFormDataGlobal = this.props.setFormData
-        // sendFormDataGlobal = this.props.sendFormData
-        window.props = this.props; // todo Delete before prod
-
-        console.log('--- props: ', this.props)
-
         this.initCanvas()
-
-        console.log('--- props: ', this.props)
 
     }
 
     render() {
-        console.log('--- x = ', this.x)
-        console.log('--- y = ', this.y)
-        console.log('--- r = ', this.r)
 
         return (
             <div>
-                <h1>I am an interactive graph</h1>
-                {  this.props.alert &&  <Alert alertText={this.props.alert}/>}
                 <canvas
                     id='canvas'
                     ref={ (canvasDOM) => {this.canvas = canvasDOM}}
                 >
                     <h1>Your browser doesn't support canvas. Can't draw interactive graph.</h1>
                 </canvas>
+
 
                 <div className="coordinates-view">
                     <p>
@@ -112,8 +114,8 @@ class InteractiveGraph extends Component {
                 xCoord = (canvasX - centerX) / pixelStep;
                 yCoord = (centerY - canvasY) / pixelStep;
 
-                xCoord = this.findClosestX(xCoord);
-                yCoord = this.findClosestY(yCoord);
+                xCoord = findClosestX(xCoord);
+                yCoord = findClosestY(yCoord);
 
                 this.setCoordinatesView(xCoord, Math.round( yCoord * 1000 ) / 1000 );
 
@@ -121,60 +123,28 @@ class InteractiveGraph extends Component {
 
 
             this.canvas.addEventListener('click', () => {
-                console.log('--- click on Canvas >- sendFormData( formData )')
 
-                if ( ! this.isValidR( this.r ) ) {
-                    this.props.showAlert( "Выберете радиус `r`");
-                    console.log('--- invalid r')
+
+                if ( ! isValidR( this.props.formData.r ) ) {
+                    this.props.showAlert( "Выберете правильный радиус r");
+
 
                 } else {
 
-                    this.props.sendFormData({ // mb sendFormDataGlobal ?
+                    this.props.sendFormData({
                         x: xCoord,
                         y: yCoord,
-                        r: this.r
+                        r: this.props.formData.r
                     })
+
                 }
 
             });
 
-            // Useless method pr_obably
-            // this.canvas.addEventListener('mouseout', () => {
-            //     console.log('--- mouse leaves Canvas -> setFormData( formData )')
-            //     setFormData({ // mb setFormDataGlobal ?
-            //         x: xCoord,
-            //         y: yCoord,
-            //         r: this.r
-            //     })
-            // })
 
         } else {
             alert('Проблемы c канвасом')
         }
-    }
-
-     isValidX( x ) {
-        return (
-            isNumeric( x ) && ( x >= -5 ) && ( x <= 5)
-        )
-    }
-
-     isValidY( y ) {
-        return (
-            isNumeric( y ) && ( y >= -5 ) && ( y <= 5)
-        )
-    }
-
-     isValidR( r ) {
-        return (
-            isNumeric( r ) && ( r >= -5 ) && ( r <= 5)
-        )
-    }
-
-     isValidFormData( x, y, r ) {
-        return (
-            this.isValidX( x ) && this.isValidY( y ) && this.isValidR( r )
-        )
     }
 
     // Draws a point on thw canvas.
@@ -194,41 +164,6 @@ class InteractiveGraph extends Component {
 
     }
 
-
-    // Returns the closest valid "X" value for the specified one.
-     findClosestX( x ) {
-
-        let closestX = x;
-
-        if (x > 2) {
-            closestX = 2
-        } else if (x < -2) {
-            closestX = -2;
-        } else {
-            closestX = Math.round(x * 2) / 2;
-        }
-
-        return closestX;
-
-    }
-
-
-    // Returns the closest valid "Y" value for the specified one.
-     findClosestY(y) {
-
-        let closestY = y;
-
-        if (y >= 3) {
-            closestY = 2.999999999999;
-        } else if (y <= -3) {
-            closestY = -2.999999999999;
-        }
-
-        return closestY;
-
-    }
-
-
     // Draw the area consisting of a square, triangle and semicircle on the canvas.
      drawArea( r ) {
 
@@ -245,7 +180,7 @@ class InteractiveGraph extends Component {
         //треугольник
          this.ctx.beginPath();
          this.ctx.moveTo(0, 0);
-         this.ctx.lineTo(- (r * pixelStep), 0);
+         this.ctx.lineTo(- (r * pixelStep) / 2, 0);
          this.ctx.lineTo(0, r * pixelStep);
          this.ctx.fill();
 
@@ -254,7 +189,7 @@ class InteractiveGraph extends Component {
          this.ctx.beginPath();
          this.ctx.rotate(Math.PI/2);
          this.ctx.moveTo(0, 0);
-         this.ctx.arc(0, 0, (r * pixelStep)/2, Math.PI, Math.PI/2, true);
+         this.ctx.arc(0, 0, (r * pixelStep), Math.PI, Math.PI/2, true);
          this.ctx.lineTo(0, 0);
          this.ctx.fill();
 
@@ -266,6 +201,12 @@ class InteractiveGraph extends Component {
 
     // Clears the canvas and draws coordinateSystem, area and tablePoints on it in a proper way.
      drawAll(r) {
+
+        if ( ! r ) {
+            r = 0
+        }
+
+
 
         this.clearCanvas();
         this.drawArea(r);
@@ -345,16 +286,17 @@ class InteractiveGraph extends Component {
     // Add points from tablePoints array to the canvas.
      drawTablePoints() {
 
-         this.points.forEach( (point) => {
-            if ( point.ans === 'yes' ) {
+         this.props.points.forEach( (point) => {
+
+            if ( point.result === 'YES' ) {
                 this.drawPoint(point.x, point.y, 'green')
-            } else if ( point.ans === 'no' ) {
+            } else if ( point.result === 'NO' ) {
                 this.drawPoint(point.x, point.y, 'red')
             } else {
-                alert('Непонятная точка в методе "drawTablePoints" : ' + point.json())
+                alert('Непонятная точка в методе "drawTablePoints" : ' )
             }
         })
-        console.log('--- Drawing tablePoints')
+
     }
 
      // Sets the specified coordinates to "X : " and "Y : " fields nearby canvas.
@@ -366,7 +308,7 @@ class InteractiveGraph extends Component {
 }
 
 function mapStateToProps( state ) {
-    console.log('---', ' state = ', state)
+
     return {
         formData: state.mainPage.formData,
         points: state.mainPage.points,
@@ -379,6 +321,9 @@ function mapDispatchToProps( dispatch ) {
     return {
         setFormData: ( formData ) => {
             dispatch(setFormData(formData))
+        },
+        clearFormData: () => {
+            dispatch(clearForm())
         },
         sendFormData: ( formData ) => {
             dispatch(sendFormData(formData))

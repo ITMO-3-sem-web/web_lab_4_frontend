@@ -6,4 +6,7 @@ export const FETCH_POINTS_TABLE = 'POINTS_TABLE/FETCH_POINTS_TABLE'
 export const SET_FORM_DATA = 'FORM/SET_FORM_DATA'
 export const SEND_FORM_DATA = 'FORM/SEND_FORM_DATA'
 export const CLEAR_FORM = 'FORM/CLEAR_FORM'
+export const SIGN_IN = 'USER/SIGN_IN'
+export const LOG_OUT = 'USER/LOG_OUT'
+
 
